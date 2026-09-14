@@ -1,0 +1,9 @@
+streamlit
+deepforest==1.4.0
+torch
+torchvision
+shapely
+matplotlib
+pillow
+pandas
+numpy
