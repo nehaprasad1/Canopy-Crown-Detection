@@ -15,6 +15,27 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Custom styling for professional MRV dashboard presentation
+st.markdown("""
+<style>
+    .overview-card {
+        background: linear-gradient(135deg, #131720 0%, #1e2638 100%);
+        padding: 24px;
+        border-radius: 10px;
+        border: 1px solid #2d3748;
+        margin-bottom: 20px;
+    }
+    .step-box {
+        background-color: #11141c;
+        border-left: 4px solid #00f2fe;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        border-radius: 0 6px 6px 0;
+    }
+    div[data-testid="stMetricValue"] { font-size: 1.7rem; font-weight: 700; }
+</style>
+""", unsafe_allow_html=True)
+
 @st.cache_resource
 def load_detector():
     model = main.deepforest()
@@ -30,28 +51,31 @@ detector = load_detector()
 # Sidebar Controls
 # ---------------------------------------------------------
 st.sidebar.title("🌲 CanopyScope dMRV")
-st.sidebar.caption("Institutional-Grade Forest Carbon Delineation Engine")
+st.sidebar.caption("High-Integrity Carbon Stock Verification")
 
-st.sidebar.subheader("1. Survey Data Source")
+st.sidebar.subheader("1. Survey Data Ingestion")
 source_choice = st.sidebar.radio(
-    "Source Mode:",
-    ["Benchmark Stand (NEON)", "Custom Drone Tile Upload"]
+    "Choose Input Stream:",
+    ["Verified Benchmark Stand (NEON)", "Upload Custom Drone Tile"]
 )
 
 raw_img = None
 site_label = ""
 
-if source_choice == "Benchmark Stand (NEON)":
+if source_choice == "Verified Benchmark Stand (NEON)":
     benchmark_choice = st.sidebar.selectbox(
-        "Select Site:",
-        ["SOAP Montane Stand (Snag Challenge)", "OSBS Conifer Pine Stand"]
+        "Select Test Plot:",
+        [
+            "SOAP Montane Stand (Snag & Rock Challenge)",
+            "OSBS Conifer Pine Stand (High Density)"
+        ]
     )
     if "SOAP" in benchmark_choice:
         raw_img = Image.open(get_data("SOAP_061.png")).convert("RGB")
-        site_label = "NEON SOAP (Montane Conifer & Deadwood)"
+        site_label = "NEON SOAP Montane Forest (Contains Deadwood Snags)"
     else:
         raw_img = Image.open(get_data("OSBS_029.png")).convert("RGB")
-        site_label = "NEON OSBS (Subtropical Pine Stand)"
+        site_label = "NEON OSBS Conifer Forest (Living Pine Stand)"
 else:
     uploaded = st.sidebar.file_uploader("Upload Orthomosaic Tile (.png, .jpg, .tif)", type=["png", "jpg", "jpeg", "tif"])
     if uploaded is not None:
@@ -59,20 +83,60 @@ else:
         site_label = f"Upload: {uploaded.name}"
     else:
         raw_img = Image.open(get_data("SOAP_061.png")).convert("RGB")
-        site_label = "NEON SOAP (Default Preview)"
-        st.sidebar.info("Awaiting custom upload. Displaying default benchmark.")
+        site_label = "NEON SOAP Stand (Default Preview)"
+        st.sidebar.info("Displaying default benchmark until a custom image is uploaded.")
 
-st.sidebar.subheader("2. Carbon Accounting Parameters")
+st.sidebar.subheader("2. Market & Sensor Parameters")
 gsd_cm = st.sidebar.number_input("Sensor GSD (cm/px)", 5.0, 30.0, 10.0, step=1.0)
 m_per_px = gsd_cm / 100.0
-
-carbon_price_per_tco2 = st.sidebar.slider("Carbon Credit Price ($/tCO2e)", 10, 80, 25, step=5)
+carbon_price_per_tco2 = st.sidebar.slider("Carbon Credit Price ($/tCO₂e)", 10, 80, 25, step=5)
 buffer_discount = st.sidebar.slider("Risk Buffer Deduction (%)", 5, 25, 15, step=1)
 
-st.sidebar.subheader("3. Verification Filters")
+st.sidebar.subheader("3. Verification Gateways")
 enable_ndvi_gating = st.sidebar.toggle("Enable 4-Band Chlorophyll Audit", value=True)
 ndvi_thresh = st.sidebar.slider("NDVI Deadwood Rejection Cutoff", 0.05, 0.40, 0.18, 0.01)
-conf_thresh = st.sidebar.slider("Optical Sensitivity (RetinaNet)", 0.15, 0.60, 0.20, 0.05)
+conf_thresh = st.sidebar.slider("Detector Sensitivity", 0.15, 0.60, 0.20, 0.05)
+
+# ---------------------------------------------------------
+# Top Landing Page: Overview & User Guide
+# ---------------------------------------------------------
+st.markdown("""
+<div class="overview-card">
+    <h1 style="margin: 0 0 10px 0; color: #ffffff;">🌲 CanopyScope: Carbon dMRV Engine</h1>
+    <p style="color: #cbd5e0; font-size: 1.05rem; margin-bottom: 0;">
+        <b>Individual Tree Crown (ITC) Delineation & Biophysical Verification</b> designed to prevent 
+        phantom carbon credits in voluntary carbon markets. By combining <b>8-point organic polygon fitting</b> 
+        with <b>4-band Near-Infrared (NDVI) chlorophyll gating</b>, CanopyScope systematically disqualifies 
+        standing deadwood snags, bleached rocks, and overlapping boundary inflation before carbon credit issuance.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+with st.expander("📖 User Guide: How to Operate & Interpret This Audit Tool", expanded=False):
+    c_g1, c_g2, c_g3 = st.columns(3)
+    with c_g1:
+        st.markdown("""
+        <div class="step-box">
+            <b>Step 1: Select or Upload Stand</b><br>
+            Use the sidebar to choose between real benchmark sites (<b>SOAP</b> for testing deadwood filtering, <b>OSBS</b> for dense conifer geometry) or upload your own drone orthomosaic tile.
+        </div>
+        """, unsafe_allow_html=True)
+    with c_g2:
+        st.markdown("""
+        <div class="step-box">
+            <b>Step 2: Calibrate Verification Gates</b><br>
+            Set your sensor resolution (GSD). Toggle the <b>4-Band Chlorophyll Audit</b> to evaluate the core of each crown against Near-Infrared reflectance, automatically dropping non-photosynthetic timber.
+        </div>
+        """, unsafe_allow_html=True)
+    with c_g3:
+        st.markdown("""
+        <div class="step-box">
+            <b>Step 3: Audit & Export Ledger</b><br>
+            Inspect the side-by-side verification maps, evaluate the gross vs. conservative $\\text{tCO}_2\\text{e}$ metrics, and download the certified stem inventory CSV for third-party auditing.
+        </div>
+        """, unsafe_allow_html=True)
+
+st.caption(f"Currently inspecting stand: **{site_label}**")
 
 # ---------------------------------------------------------
 # Core Analytics Pipeline
@@ -124,8 +188,8 @@ if not df_trees.empty:
     df_trees["crown_diam_m"] = ((df_trees["xmax"] - df_trees["xmin"]) + (df_trees["ymax"] - df_trees["ymin"])) / 2.0 * m_per_px
     df_trees["crown_area_m2"] = np.pi * ((df_trees["crown_diam_m"] / 2.0) ** 2)
 
-    # Allometric Biomass Model: AGB = a * (Crown Area)^b
-    df_trees["agb_kg"] = 0.06 * (df_trees["crown_area_m2"] ** 1.35) * 1000.0  # empirical kg
+    # Allometric Biomass: AGB = a * (Crown Area)^b
+    df_trees["agb_kg"] = 0.06 * (df_trees["crown_area_m2"] ** 1.35) * 1000.0
     df_trees["tco2e"] = (df_trees["agb_kg"] * 0.47 * 1e-3) * 3.67
 
     if enable_ndvi_gating:
@@ -135,7 +199,7 @@ if not df_trees.empty:
         df_live = df_trees.copy()
         df_dead = pd.DataFrame()
 
-    # Overlap resolution
+    # Spatial overlap resolution
     polygons_live_m = [box_to_polygon(r, scale=m_per_px) for _, r in df_live.iterrows()]
     polygons_live_px = [box_to_polygon(r, scale=1.0) for _, r in df_live.iterrows()]
     polygons_dead_px = [box_to_polygon(r, scale=1.0) for _, r in df_dead.iterrows()] if not df_dead.empty else []
@@ -143,26 +207,21 @@ if not df_trees.empty:
     live_canopy_m2 = unary_union(polygons_live_m).area if polygons_live_m else 0.0
     canopy_cover_pct = (live_canopy_m2 / total_aoi_m2) * 100.0
 
-    # Carbon Stock Aggregation
+    # Carbon yields
     gross_tco2e = df_live["tco2e"].sum()
     conservative_tco2e = gross_tco2e * (1.0 - (buffer_discount / 100.0))
     avoided_phantom_tco2e = df_dead["tco2e"].sum()
     avoided_liability_usd = avoided_phantom_tco2e * carbon_price_per_tco2
 
-    # ---------------------------------------------------------
-    # Header & Metric Rows
-    # ---------------------------------------------------------
-    st.title("🌲 CanopyScope: Carbon dMRV Engine")
-    st.caption(f"Inspection Target: **{site_label}** | Survey Area: **{total_aoi_m2:.0f} m²** ({(total_aoi_m2/10000):.3f} ha)")
-
+    # Metric Banners
     st.markdown("### 📊 Ecological Delineation Metrics")
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("🌲 Verified Stems", f"{len(df_live)} living", f"{len(df_dead)} snags filtered", delta_color="normal")
+    m1.metric("🌲 Verified Living Stems", f"{len(df_live)} stems", f"{len(df_dead)} snags filtered")
     m2.metric("🌿 Audited Canopy Area", f"{live_canopy_m2:.1f} m²", f"{(live_canopy_m2/10000):.4f} ha")
-    m3.metric("📊 Canopy Coverage", f"{canopy_cover_pct:.1f}%", f"GSD: {gsd_cm:.1f} cm/px")
-    m4.metric("🛡️ Snag Disqualification Rate", f"{(len(df_dead)/len(df_trees)*100):.1f}%" if len(df_trees) > 0 else "0.0%", "Spectral audit passed")
+    m3.metric("📊 Canopy Coverage", f"{canopy_cover_pct:.1f}%", f"Total AOI: {total_aoi_m2:.0f} m²")
+    m4.metric("🛡️ Snag Disqualification Rate", f"{(len(df_dead)/len(df_trees)*100):.1f}%" if len(df_trees) > 0 else "0.0%", "Spectral check passed")
 
-    st.markdown("### 💰 Carbon Yield & Audit Risk Metrics")
+    st.markdown("### 💰 Carbon Yield & Market Risk Metrics")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("⚖️ Gross Biomass Yield", f"{gross_tco2e:.2f} tCO₂e", "Total estimated stock")
     c2.metric("🛡️ Conservative Issuance", f"{conservative_tco2e:.2f} tCO₂e", f"-{buffer_discount}% Risk buffer applied")
@@ -171,15 +230,13 @@ if not df_trees.empty:
 
     st.markdown("---")
 
-    # ---------------------------------------------------------
     # Tabs
-    # ---------------------------------------------------------
-    tab1, tab2, tab3 = st.tabs(["🛰️ Spatial & Spectral Verification", "📋 Carbon Ledger & Geo-CSV", "📜 MRV Compliance Sheet"])
+    tab1, tab2, tab3 = st.tabs(["🛰️ Spatial & Spectral Verification", "📋 Carbon Ledger & Geo-CSV", "📜 MRV Methodology Alignment"])
 
     with tab1:
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown("**Crown Footprints (Geometric Deduplication)**")
+            st.markdown("**Crown Classification Footprints**")
             fig1, ax1 = plt.subplots(figsize=(6, 6))
             ax1.imshow(img_arr)
             for p in polygons_live_px:
@@ -221,7 +278,7 @@ if not df_trees.empty:
         )
 
     with tab3:
-        st.subheader("Digital MRV Compliance & Methodology Alignment")
+        st.subheader("Methodology Compliance & Standard Alignment")
         st.markdown("""
         | Methodology Requirement | Standard Reference | CanopyScope Implementation | Status |
         | :--- | :--- | :--- | :--- |
@@ -230,3 +287,5 @@ if not df_trees.empty:
         | **Overlap Area Conservatism** | Plan Vivo Standards | 8-point polygon approximation + `shapely` spatial union merging | ✅ Compliant |
         | **Uncertainty Buffer Deduction** | VCS AFOLU Requirements | Automated $15\%$ risk deduction applied to gross crediting yield | ✅ Compliant |
         """)
+else:
+    st.warning("No tree crowns could be identified above the selected sensitivity threshold.")
